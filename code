@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AttendX — Smart Attendance Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --border: #2a2a38;
+      --text: #f0f0ff;
+      --muted: #7a7a9a;
+      --safe: #00e5a0;
+      --warn: #ffb830;
+      --danger: #ff4466;
+      --accent: #7c5cfc;
+      --accent2: #c084fc;
+    }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Animated background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(124,92,252,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 30% at 80% 80%, rgba(192,132,252,0.08) 0%, transparent 60%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Grain overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: 0.4;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; padding: 0 20px 60px; }
+
+    /* HEADER */
+    header {
+      padding: 40px 0 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+      animation: fadeDown 0.6s ease both;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      width: 42px; height: 42px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 20px;
+    }
+
+    .logo h1 { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+    .logo span { color: var(--accent2); }
+
+    .req-badge {
+      background: rgba(124,92,252,0.15);
+      border: 1px solid rgba(124,92,252,0.3);
+      color: var(--accent2);
+      padding: 6px 14px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* OVERVIEW CARDS */
+    .overview {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 36px;
+      animation: fadeUp 0.6s 0.1s ease both;
+    }
+
+    .ov-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 22px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ov-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      border-radius: 16px 16px 0 0;
+    }
+
+    .ov-card.safe::before { background: var(--safe); }
+    .ov-card.warn::before { background: var(--warn); }
+    .ov-card.danger::before { background: var(--danger); }
+
+    .ov-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; font-family: 'DM Mono', monospace; margin-bottom: 8px; }
+    .ov-value { font-size: 32px; font-weight: 800; line-height: 1; }
+    .ov-card.safe .ov-value { color: var(--safe); }
+    .ov-card.warn .ov-value { color: var(--warn); }
+    .ov-card.danger .ov-value { color: var(--danger); }
+    .ov-sub { font-size: 12px; color: var(--muted); margin-top: 4px; font-family: 'DM Mono', monospace; }
+
+    /* ADD SUBJECT FORM */
+    .add-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 28px;
+      animation: fadeUp 0.6s 0.2s ease both;
+    }
+
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+
+    .field input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus { border-color: var(--accent); }
+    .field input::placeholder { color: var(--muted); }
+
+    .btn-add {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      border: none;
+      padding: 12px 22px;
+      border-radius: 10px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+
+    .btn-add:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-add:active { transform: translateY(0); }
+
+    /* MARK ATTENDANCE */
+    .mark-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      margin-bottom: 28px;
+      animation: fadeUp 0.6s 0.25s ease both;
+      display: none;
+    }
+
+    .mark-section.visible { display: block; }
+
+    .mark-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .mark-row label { font-size: 13px; color: var(--muted); font-family: 'DM Mono', monospace; min-width: 90px; }
+
+    .mark-select {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      outline: none;
+      cursor: pointer;
+      flex: 1;
+      min-width: 160px;
+    }
+
+    .mark-btn {
+      padding: 9px 18px;
+      border-radius: 10px;
+      border: none;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .mark-btn.present { background: rgba(0,229,160,0.15); color: var(--safe); border: 1px solid rgba(0,229,160,0.3); }
+    .mark-btn.absent  { background: rgba(255,68,102,0.15); color: var(--danger); border: 1px solid rgba(255,68,102,0.3); }
+    .mark-btn:hover { transform: translateY(-1px); filter: brightness(1.2); }
+
+    /* SUBJECTS LIST */
+    .subjects-section { animation: fadeUp 0.6s 0.3s ease both; }
+
+    .subject-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 24px;
+      margin-bottom: 14px;
+      transition: border-color 0.2s, transform 0.2s;
+      animation: fadeUp 0.4s ease both;
+    }
+
+    .subject-card:hover { border-color: var(--accent); transform: translateX(4px); }
+
+    .subject-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .subject-name { font-size: 17px; font-weight: 700; }
+
+    .subject-actions { display: flex; gap: 8px; }
+
+    .btn-icon {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 15px;
+      display: grid;
+      place-items: center;
+      transition: all 0.15s;
+    }
+
+    .btn-icon:hover { border-color: var(--danger); color: var(--danger); }
+    .btn-icon.edit:hover { border-color: var(--accent); color: var(--accent); }
+
+    /* Progress bar */
+    .progress-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .progress-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--surface2);
+      border-radius: 100px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 100px;
+      transition: width 0.6s cubic-bezier(0.34,1.56,0.64,1);
+    }
+
+    .progress-pct {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px;
+      font-weight: 500;
+      min-width: 70px;
+      text-align: right;
+    }
+
+    .subject-stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+
+    .stat-box {
+      background: var(--surface2);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+
+    .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; font-family: 'DM Mono', monospace; margin-bottom: 4px; }
+    .stat-val { font-size: 18px; font-weight: 700; font-family: 'DM Mono', monospace; }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .status-pill.safe   { background: rgba(0,229,160,0.12); color: var(--safe); border: 1px solid rgba(0,229,160,0.25); }
+    .status-pill.warn   { background: rgba(255,184,48,0.12); color: var(--warn); border: 1px solid rgba(255,184,48,0.25); }
+    .status-pill.danger { background: rgba(255,68,102,0.12); color: var(--danger); border: 1px solid rgba(255,68,102,0.25); }
+
+    .insight {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      font-family: 'DM Mono', monospace;
+      padding: 10px 14px;
+      background: var(--surface2);
+      border-radius: 8px;
+      border-left: 3px solid transparent;
+    }
+
+    .insight.safe   { border-left-color: var(--safe); }
+    .insight.warn   { border-left-color: var(--warn); }
+    .insight.danger { border-left-color: var(--danger); }
+
+    /* LOG */
+    .log-section {
+      margin-top: 36px;
+      animation: fadeUp 0.6s 0.4s ease both;
+    }
+
+    .log-list {
+      max-height: 200px;
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--border) transparent;
+    }
+
+    .log-entry {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-family: 'DM Mono', monospace;
+      animation: fadeLeft 0.3s ease both;
+    }
+
+    .log-entry:last-child { border-bottom: none; }
+    .log-time { color: var(--muted); font-size: 11px; }
+    .log-p { color: var(--safe); font-weight: 500; }
+    .log-a { color: var(--danger); font-weight: 500; }
+
+    /* EMPTY STATE */
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+
+    .empty-icon { font-size: 48px; margin-bottom: 16px; opacity: 0.4; }
+    .empty p { font-family: 'DM Mono', monospace; font-size: 14px; }
+
+    /* TOAST */
+    .toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 12px 24px;
+      border-radius: 100px;
+      font-size: 13px;
+      font-family: 'DM Mono', monospace;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 999;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    /* INLINE EDIT */
+    .edit-form {
+      display: none;
+      grid-template-columns: 2fr 1fr 1fr auto auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 14px;
+    }
+
+    .edit-form.visible { display: grid; }
+    .edit-form input {
+      background: var(--bg);
+      border: 1px solid var(--accent);
+      color: var(--text);
+      padding: 9px 12px;
+      border-radius: 8px;
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .btn-save {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 9px 16px;
+      border-radius: 8px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-cancel {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 9px 14px;
+      border-radius: 8px;
+      font-family: 'Syne', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* Animations */
+    @keyframes fadeDown  { from { opacity:0; transform: translateY(-16px); } to { opacity:1; transform: none; } }
+    @keyframes fadeUp    { from { opacity:0; transform: translateY(16px);  } to { opacity:1; transform: none; } }
+    @keyframes fadeLeft  { from { opacity:0; transform: translateX(-10px);} to { opacity:1; transform: none; } }
+
+    @media (max-width: 640px) {
+      .overview { grid-template-columns: 1fr 1fr; }
+      .ov-card:last-child { grid-column: span 2; }
+      .form-row { grid-template-columns: 1fr 1fr; }
+      .btn-add { grid-column: span 2; }
+      .subject-stats { grid-template-columns: 1fr 1fr; }
+      .edit-form { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">📊</div>
+      <h1>Attend<span>X</span></h1>
+    </div>
+    <div class="req-badge">Min 75% required</div>
+  </header>
+
+  <!-- OVERVIEW -->
+  <div class="overview">
+    <div class="ov-card safe">
+      <div class="ov-label">Safe Subjects</div>
+      <div class="ov-value" id="ov-safe">0</div>
+      <div class="ov-sub">≥ 75%</div>
+    </div>
+    <div class="ov-card warn">
+      <div class="ov-label">At Risk</div>
+      <div class="ov-value" id="ov-warn">0</div>
+      <div class="ov-sub">75–84%</div>
+    </div>
+    <div class="ov-card danger">
+      <div class="ov-label">Danger Zone</div>
+      <div class="ov-value" id="ov-danger">0</div>
+      <div class="ov-sub">< 75%</div>
+    </div>
+  </div>
+
+  <!-- ADD SUBJECT -->
+  <div class="add-section">
+    <div class="section-title">Add Subject</div>
+    <div class="form-row">
+      <div class="field">
+        <label>Subject Name</label>
+        <input type="text" id="inp-name" placeholder="e.g. Mathematics"/>
+      </div>
+      <div class="field">
+        <label>Total Classes</label>
+        <input type="number" id="inp-total" placeholder="50" min="0"/>
+      </div>
+      <div class="field">
+        <label>Attended</label>
+        <input type="number" id="inp-attended" placeholder="40" min="0"/>
+      </div>
+      <button class="btn-add" onclick="addSubject()">+ Add</button>
+    </div>
+  </div>
+
+  <!-- MARK ATTENDANCE -->
+  <div class="mark-section" id="mark-section">
+    <div class="section-title">Mark Today's Attendance</div>
+    <div class="mark-row">
+      <label>Subject</label>
+      <select class="mark-select" id="mark-select"></select>
+      <button class="mark-btn present" onclick="markAttendance('present')">✓ Present</button>
+      <button class="mark-btn absent"  onclick="markAttendance('absent')">✗ Absent</button>
+    </div>
+  </div>
+
+  <!-- SUBJECTS -->
+  <div class="subjects-section">
+    <div class="section-title">My Subjects</div>
+    <div id="subjects-list"></div>
+  </div>
+
+  <!-- LOG -->
+  <div class="log-section" id="log-section" style="display:none">
+    <div class="section-title">Activity Log</div>
+    <div class="add-section" style="padding:0;overflow:hidden;">
+      <div class="log-list" id="log-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  let subjects = JSON.parse(localStorage.getItem('attendx_subjects') || '[]');
+  let logs = JSON.parse(localStorage.getItem('attendx_logs') || '[]');
+
+  function save() {
+    localStorage.setItem('attendx_subjects', JSON.stringify(subjects));
+    localStorage.setItem('attendx_logs', JSON.stringify(logs));
+  }
+
+  function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  function getStatus(pct) {
+    if (pct >= 85) return 'safe';
+    if (pct >= 75) return 'warn';
+    return 'danger';
+  }
+
+  function getInsight(s) {
+    const pct = s.total === 0 ? 0 : (s.attended / s.total) * 100;
+    const status = getStatus(pct);
+    if (s.total === 0) return { msg: 'No classes recorded yet.', status: 'warn' };
+
+    if (status === 'safe') {
+      // how many can skip
+      const canSkip = Math.floor((s.attended - 0.75 * s.total) / 0.25);
+      return { msg: `✓ You can skip up to ${canSkip} more class${canSkip !== 1 ? 'es' : ''} and stay above 75%.`, status: 'safe' };
+    }
+    if (status === 'warn') {
+      const canSkip = Math.floor((s.attended - 0.75 * s.total) / 0.25);
+      if (canSkip > 0) {
+        return { msg: `⚠ You can skip ${canSkip} more class${canSkip !== 1 ? 'es' : ''}, but be careful — you're close to the limit.`, status: 'warn' };
+      }
+      return { msg: `⚠ Don't miss any more classes — you're right at the edge.`, status: 'warn' };
+    }
+    // danger
+    const needed = Math.ceil((0.75 * s.total - s.attended) / 0.25);
+    return { msg: `✗ Attend ${needed} consecutive class${needed !== 1 ? 'es' : ''} to reach 75%.`, status: 'danger' };
+  }
+
+  function addSubject() {
+    const name     = document.getElementById('inp-name').value.trim();
+    const total    = parseInt(document.getElementById('inp-total').value) || 0;
+    const attended = parseInt(document.getElementById('inp-attended').value) || 0;
+
+    if (!name) return toast('Please enter a subject name.');
+    if (attended > total) return toast('Attended cannot exceed total classes.');
+    if (subjects.find(s => s.name.toLowerCase() === name.toLowerCase())) return toast('Subject already exists!');
+
+    subjects.push({ id: Date.now(), name, total, attended });
+    save();
+
+    document.getElementById('inp-name').value = '';
+    document.getElementById('inp-total').value = '';
+    document.getElementById('inp-attended').value = '';
+
+    render();
+    toast(`"${name}" added!`);
+  }
+
+  function deleteSubject(id) {
+    subjects = subjects.filter(s => s.id !== id);
+    save();
+    render();
+    toast('Subject removed.');
+  }
+
+  function markAttendance(type) {
+    const id = parseInt(document.getElementById('mark-select').value);
+    const s  = subjects.find(x => x.id === id);
+    if (!s) return;
+
+    s.total += 1;
+    if (type === 'present') s.attended += 1;
+
+    const now = new Date();
+    logs.unshift({
+      time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      date: now.toLocaleDateString(),
+      subject: s.name,
+      type
+    });
+
+    save();
+    render();
+    toast(`${s.name} — marked ${type === 'present' ? '✓ Present' : '✗ Absent'}`);
+  }
+
+  function startEdit(id) {
+    document.getElementById(`edit-${id}`).classList.add('visible');
+  }
+
+  function cancelEdit(id) {
+    document.getElementById(`edit-${id}`).classList.remove('visible');
+  }
+
+  function saveEdit(id) {
+    const name     = document.getElementById(`ename-${id}`).value.trim();
+    const total    = parseInt(document.getElementById(`etotal-${id}`).value) || 0;
+    const attended = parseInt(document.getElementById(`eatt-${id}`).value) || 0;
+
+    if (!name) return toast('Name required.');
+    if (attended > total) return toast('Attended cannot exceed total.');
+    const s = subjects.find(x => x.id === id);
+    s.name = name; s.total = total; s.attended = attended;
+    save(); render(); toast('Updated!');
+  }
+function render() {
+    const list    = document.getElementById('subjects-list');
+    const sel     = document.getElementById('mark-select');
+    const markSec = document.getElementById('mark-section');
+    const logSec  = document.getElementById('log-section');
+
+    let safe = 0, warn = 0, danger = 0;
+    subjects.forEach(s => {
+      const pct = s.total === 0 ? 0 : (s.attended / s.total) * 100;
+      const st  = getStatus(pct);
+      if (st === 'safe') safe++; else if (st === 'warn') warn++; else danger++;
+    });
+    document.getElementById('ov-safe').textContent   = safe;
+    document.getElementById('ov-warn').textContent   = warn;
+    document.getElementById('ov-danger').textContent = danger;
+
+    sel.innerHTML = subjects.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+    markSec.classList.toggle('visible', subjects.length > 0);
+    logSec.style.display = logs.length > 0 ? 'block' : 'none';
+
+    if (subjects.length === 0) {
+      list.innerHTML = `<div class="empty"><div class="empty-icon">📚</div><p>No subjects yet. Add one above!</p></div>`;
+      return;
+    }
+
+    list.innerHTML = subjects.map(s => {
+      const pct     = s.total === 0 ? 0 : Math.round((s.attended / s.total) * 100);
+      const status  = getStatus(pct);
+      const color   = status === 'safe' ? 'var(--safe)' : status === 'warn' ? 'var(--warn)' : 'var(--danger)';
+      const insight = getInsight(s);
+      const missed  = s.total - s.attended;
+      return `
+      <div class="subject-card" id="card-${s.id}">
+        <div class="subject-top">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div class="subject-name">${s.name}</div>
+            <div class="status-pill ${status}">${status === 'safe' ? '✓ Safe' : status === 'warn' ? '⚠ At Risk' : '✗ Danger'}</div>
+          </div>
+          <div class="subject-actions">
+            <button class="btn-icon edit" onclick="startEdit(${s.id})" title="Edit">✎</button>
+            <button class="btn-icon" onclick="deleteSubject(${s.id})" title="Delete">✕</button>
+          </div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill" style="width:${Math.min(pct,100)}%;background:${color};"></div></div>
+          <div class="progress-pct" style="color:${color}">${pct}%</div>
+        </div>
+        <div class="subject-stats">
+          <div class="stat-box"><div class="stat-label">Attended</div><div class="stat-val" style="color:var(--safe)">${s.attended}</div></div>
+          <div class="stat-box"><div class="stat-label">Missed</div><div class="stat-val" style="color:var(--danger)">${missed}</div></div>
+          <div class="stat-box"><div class="stat-label">Total</div><div class="stat-val">${s.total}</div></div>
+        </div>
+        <div class="insight ${insight.status}">${insight.msg}</div>
+        <div class="edit-form" id="edit-${s.id}">
+          <div class="field"><label>Name</label><input id="ename-${s.id}" value="${s.name}"/></div>
+          <div class="field"><label>Total</label><input id="etotal-${s.id}" type="number" value="${s.total}"/></div>
+          <div class="field"><label>Attended</label><input id="eatt-${s.id}" type="number" value="${s.attended}"/></div>
+          <button class="btn-save" onclick="saveEdit(${s.id})">Save</button>
+          <button class="btn-cancel" onclick="cancelEdit(${s.id})">Cancel</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('log-list').innerHTML = logs.slice(0, 30).map(l => `
+      <div class="log-entry">
+        <span>${l.subject} — <span class="log-${l.type[0]}">${l.type === 'present' ? '✓ Present' : '✗ Absent'}</span></span>
+        <span class="log-time">${l.date} ${l.time}</span>
+      </div>`).join('');
+  }
+
+  ['inp-name','inp-total','inp-attended'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') addSubject(); });
+  });
+
+  render();
+</script>
+</body>
+</html>
